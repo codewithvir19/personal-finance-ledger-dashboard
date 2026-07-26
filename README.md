@@ -21,10 +21,4 @@ An interactive Personal Finance Dashboard that analyzes income, expenses, saving
 - Data Analysis
 - Data Visualization
 
-## 📸 Screenshot
 
-(Add your project screenshot here)
-
-## 📄 License
-
-MIT License
