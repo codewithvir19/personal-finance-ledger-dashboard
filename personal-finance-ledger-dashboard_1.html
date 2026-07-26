@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>My Money Ledger — Personal Finance Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --navy: #122238;
+    --navy-2: #1C3255;
+    --navy-3: #0B1626;
+    --paper: #EFE7D3;
+    --paper-stripe: #E4D9BE;
+    --ink: #23201A;
+    --ink-soft: #6B6153;
+    --credit: #1F6B45;
+    --debit: #B23B2E;
+    --gold: #C89B3C;
+    --gold-soft: #E4C878;
+    --card-bg: #FBF7EC;
+    --rule: rgba(35,32,26,0.14);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(ellipse at 20% 0%, rgba(200,155,60,0.06), transparent 45%),
+      radial-gradient(circle at 1px 1px, rgba(35,32,26,0.05) 1px, transparent 1.4px) 0 0/16px 16px,
+      var(--paper);
+    font-family:'IBM Plex Sans', sans-serif;
+    color:var(--ink);
+    padding:0 0 60px;
+  }
+  .wrap{max-width:1080px; margin:0 auto; padding:0 20px;}
+
+  /* ===== HERO / LETTERHEAD ===== */
+  .hero-band{
+    background:
+      linear-gradient(160deg, var(--navy) 0%, var(--navy-2) 55%, var(--navy-3) 100%);
+    position:relative;
+    overflow:hidden;
+    padding:34px 26px 30px;
+    margin-bottom:26px;
+    box-shadow:0 10px 30px rgba(11,22,38,0.35);
+  }
+  .hero-band::before{
+    content:'';
+    position:absolute; inset:0;
+    background-image:
+      repeating-linear-gradient(115deg, rgba(200,155,60,0.05) 0px, rgba(200,155,60,0.05) 1px, transparent 1px, transparent 90px);
+    pointer-events:none;
+  }
+  .hero-band::after{
+    content:'';
+    position:absolute; left:0; right:0; bottom:0; height:4px;
+    background:linear-gradient(90deg, transparent, var(--gold) 20%, var(--gold-soft) 50%, var(--gold) 80%, transparent);
+  }
+  .hero-inner{
+    position:relative; z-index:1;
+    display:flex; justify-content:space-between; align-items:flex-start; gap:20px;
+    flex-wrap:wrap;
+  }
+  .hero-left{ display:flex; gap:16px; align-items:flex-start; }
+  .crest{
+    width:56px; height:56px; border-radius:50%; flex-shrink:0;
+    background:radial-gradient(circle at 35% 30%, #F1D98A, var(--gold) 55%, #8C6A22 100%);
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Fraunces', serif; font-weight:700; font-size:22px; color:var(--navy-3);
+    box-shadow:0 3px 8px rgba(0,0,0,0.4), inset 0 1px 2px rgba(255,255,255,0.6);
+    border:1px solid rgba(255,255,255,0.3);
+    margin-top:2px;
+  }
+  .ledger-title{
+    font-family:'Fraunces', serif;
+    font-weight:700;
+    font-size:30px;
+    letter-spacing:0.3px;
+    margin:0;
+    color:#F5EFE0;
+  }
+  .ledger-sub{
+    font-size:12px; color:var(--gold-soft); margin-top:5px;
+    text-transform:uppercase; letter-spacing:2px;
+  }
+  .hero-balance-block{ text-align:right; }
+  .hero-balance-label{
+    font-size:11px; text-transform:uppercase; letter-spacing:2px;
+    color:rgba(245,239,224,0.65); margin-bottom:4px;
+  }
+  .hero-balance{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:600;
+    font-size:38px;
+    color:var(--gold-soft);
+    text-shadow:0 2px 10px rgba(200,155,60,0.35);
+    line-height:1;
+  }
+  .stamp{
+    font-family:'IBM Plex Mono', monospace;
+    font-weight:700;
+    font-size:12px;
+    border:2.5px solid var(--credit);
+    color:#7FD9A8;
+    border-radius:50%;
+    width:88px; height:88px;
+    display:flex; align-items:center; justify-content:center;
+    text-align:center;
+    transform:rotate(-9deg);
+    opacity:0.92;
+    line-height:1.25;
+    letter-spacing:0.5px;
+    padding:6px;
+    flex-shrink:0;
+    margin-top:6px;
+  }
+  .stamp.warn{border-color:#E28577; color:#E28577;}
+
+  /* ===== KPI ROW ===== */
+  .kpi-row{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(200px,1fr));
+    gap:14px;
+    margin-bottom:26px;
+  }
+  .kpi{
+    background:var(--card-bg);
+    border:1px solid var(--rule);
+    border-top:3px solid var(--ink);
+    border-radius:10px;
+    padding:16px 18px;
+    box-shadow:0 3px 10px rgba(35,32,26,0.06);
+    transition:transform 0.18s ease, box-shadow 0.18s ease;
+  }
+  .kpi:hover{ transform:translateY(-3px); box-shadow:0 8px 18px rgba(35,32,26,0.10); }
+  .kpi.credit{border-top-color:var(--credit);}
+  .kpi.debit{border-top-color:var(--debit);}
+  .kpi.gold{border-top-color:var(--gold);}
+  .kpi-label{
+    font-size:11px; text-transform:uppercase; letter-spacing:1.2px;
+    color:var(--ink-soft); display:flex; justify-content:space-between;
+    border-bottom:1px dashed var(--rule); padding-bottom:6px; margin-bottom:8px;
+  }
+  .kpi-value{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:26px; font-weight:600;
+  }
+  .kpi-note{font-size:11px; color:var(--ink-soft); margin-top:4px;}
+
+  /* ===== SECTION HEADERS ===== */
+  .section-label{
+    font-family:'Fraunces', serif;
+    font-size:19px; font-weight:600;
+    margin:0 0 12px 0;
+    display:flex; align-items:center; gap:10px;
+    color:var(--ink);
+  }
+  .section-label::before{
+    content:''; width:8px; height:8px; background:var(--gold); border-radius:50%;
+    flex-shrink:0; box-shadow:0 0 0 3px rgba(200,155,60,0.18);
+  }
+  .section-label::after{
+    content:''; flex:1; height:1px; background:var(--rule);
+  }
+
+  /* ===== CHART GRID ===== */
+  .chart-grid{
+    display:grid; grid-template-columns:1.4fr 1fr; gap:18px; margin-bottom:28px;
+  }
+  @media (max-width:800px){ .chart-grid{grid-template-columns:1fr;} }
+  .chart-card{
+    background:var(--card-bg); border:1px solid var(--rule);
+    border-radius:10px;
+    padding:18px; position:relative;
+    box-shadow:0 3px 10px rgba(35,32,26,0.06);
+  }
+  .chart-card canvas{max-height:280px;}
+
+  /* legend list for donut */
+  .legend-list{list-style:none; margin:12px 0 0; padding:0; font-size:12.5px;}
+  .legend-list li{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:5px 0; border-bottom:1px dotted var(--rule);
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .legend-list .swatch{width:10px;height:10px; display:inline-block; margin-right:8px; border-radius:2px;}
+  .legend-name{display:flex; align-items:center; font-family:'IBM Plex Sans',sans-serif;}
+
+  /* ===== FILTER BAR ===== */
+  .filter-bar{
+    display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px; align-items:center;
+  }
+  .filter-bar input[type=text]{
+    font-family:'IBM Plex Mono', monospace;
+    padding:8px 10px; border:1px solid var(--ink); background:var(--card-bg);
+    color:var(--ink); font-size:13px; flex:1; min-width:180px;
+  }
+  select{
+    font-family:'IBM Plex Sans', sans-serif;
+    padding:8px 10px; border:1px solid var(--ink); background:var(--card-bg);
+    color:var(--ink); font-size:13px;
+  }
+  .chip{
+    font-size:11.5px; padding:5px 11px; border:1px solid var(--ink-soft);
+    border-radius:14px; cursor:pointer; background:transparent; color:var(--ink-soft);
+    font-family:'IBM Plex Mono', monospace;
+  }
+  .chip.active{background:var(--ink); color:var(--paper); border-color:var(--ink);}
+
+  /* ===== LEDGER TABLE ===== */
+  .ledger-table-wrap{
+    background:var(--card-bg); border:1px solid var(--rule); overflow-x:auto;
+    border-radius:10px;
+    box-shadow:0 3px 10px rgba(35,32,26,0.06);
+  }
+  table{width:100%; border-collapse:collapse; font-size:13px;}
+  thead th{
+    text-align:left; padding:10px 12px; font-size:11px;
+    text-transform:uppercase; letter-spacing:1px; color:var(--ink-soft);
+    border-bottom:2px solid var(--ink); position:sticky; top:0; background:var(--card-bg);
+  }
+  tbody td{padding:9px 12px; border-bottom:1px dotted var(--rule); font-family:'IBM Plex Mono', monospace;}
+  tbody tr:nth-child(even){background:var(--paper-stripe);}
+  .amt-credit{color:var(--credit); font-weight:600;}
+  .amt-debit{color:var(--debit); font-weight:600;}
+  .cat-tag{
+    font-family:'IBM Plex Sans',sans-serif; font-size:11px; padding:2px 8px;
+    border:1px solid var(--rule); border-radius:10px; white-space:nowrap;
+  }
+  .table-scroll{max-height:420px; overflow-y:auto;}
+
+  footer{
+    margin-top:30px; padding-top:14px; border-top:1px dashed var(--rule);
+    font-size:11.5px; color:var(--ink-soft); text-align:center;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="hero-band">
+    <div class="hero-inner">
+      <div class="hero-left">
+        <div class="crest">₹</div>
+        <div>
+          <h1 class="ledger-title">My Money Ledger</h1>
+          <div class="ledger-sub">Virendra Khade · Personal Account Passbook · Feb – Jul 2026</div>
+        </div>
+      </div>
+      <div style="display:flex; align-items:flex-start; gap:22px;">
+        <div class="hero-balance-block">
+          <div class="hero-balance-label">Net Balance</div>
+          <div class="hero-balance" id="heroBalance">₹0</div>
+        </div>
+        <div class="stamp" id="healthStamp">SAVINGS<br>HEALTHY</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi credit">
+      <div class="kpi-label"><span>Total Income</span><span>▲</span></div>
+      <div class="kpi-value" id="kpiIncome">₹0</div>
+      <div class="kpi-note">Across 6 months</div>
+    </div>
+    <div class="kpi debit">
+      <div class="kpi-label"><span>Total Expenses</span><span>▼</span></div>
+      <div class="kpi-value" id="kpiExpense">₹0</div>
+      <div class="kpi-note" id="kpiExpenseNote">—</div>
+    </div>
+    <div class="kpi gold">
+      <div class="kpi-label"><span>Net Savings</span><span>◆</span></div>
+      <div class="kpi-value" id="kpiSavings">₹0</div>
+      <div class="kpi-note" id="kpiSavingsRate">—</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label"><span>Predicted Next Month</span><span>→</span></div>
+      <div class="kpi-value" id="kpiPredict">₹0</div>
+      <div class="kpi-note">3-month rolling average of spend</div>
+    </div>
+  </div>
+
+  <div class="chart-grid">
+    <div class="chart-card">
+      <div class="section-label">Monthly Income vs Expenses</div>
+      <canvas id="trendChart"></canvas>
+    </div>
+    <div class="chart-card">
+      <div class="section-label">Spending by Category</div>
+      <canvas id="donutChart"></canvas>
+      <ul class="legend-list" id="donutLegend"></ul>
+    </div>
+  </div>
+
+  <div class="section-label">Top Merchants by Spend</div>
+  <div class="chart-card" style="margin-bottom:28px;">
+    <canvas id="merchantChart" style="max-height:220px;"></canvas>
+  </div>
+
+  <div class="section-label">Transaction Ledger</div>
+  <div class="filter-bar">
+    <input type="text" id="searchBox" placeholder="Search merchant or category…">
+    <select id="monthFilter"><option value="all">All months</option></select>
+    <select id="typeFilter">
+      <option value="all">All types</option>
+      <option value="credit">Credit only</option>
+      <option value="debit">Debit only</option>
+    </select>
+  </div>
+  <div class="ledger-table-wrap">
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Date</th><th>Merchant</th><th>Category</th><th style="text-align:right;">Amount</th></tr>
+        </thead>
+        <tbody id="ledgerBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer>
+    Built by Virendra Khade · Data is simulated for portfolio/demo purposes · Prediction = average expense of the last 3 months · Built with Chart.js
+  </footer>
+</div>
+
+<script>
+const transactions = [{"id": 1, "date": "2026-02-01", "type": "credit", "category": "Income", "merchant": "Family Support", "amount": 8460.0}, {"id": 2, "date": "2026-02-02", "type": "credit", "category": "Income", "merchant": "Scholarship Credit", "amount": 5460.0}, {"id": 3, "date": "2026-02-03", "type": "debit", "category": "Transport", "merchant": "Uber", "amount": 200.0}, {"id": 4, "date": "2026-02-04", "type": "credit", "category": "Income", "merchant": "Freelance Web Project", "amount": 5600.0}, {"id": 5, "date": "2026-02-05", "type": "debit", "category": "Shopping", "merchant": "Myntra", "amount": 790.0}, {"id": 6, "date": "2026-02-07", "type": "debit", "category": "Food & Dining", "merchant": "Cafe Coffee Day", "amount": 250.0}, {"id": 7, "date": "2026-02-08", "type": "debit", "category": "Savings Transfer", "merchant": "Recurring Deposit (RD)", "amount": 2410.0}, {"id": 8, "date": "2026-02-10", "type": "debit", "category": "Education", "merchant": "Byju's Subscription", "amount": 600.0}, {"id": 9, "date": "2026-02-14", "type": "debit", "category": "Food & Dining", "merchant": "Swiggy", "amount": 300.0}, {"id": 10, "date": "2026-02-15", "type": "debit", "category": "Health", "merchant": "Local Pharmacy", "amount": 280.0}, {"id": 11, "date": "2026-02-16", "type": "debit", "category": "Entertainment", "merchant": "PVR Cinemas", "amount": 360.0}, {"id": 12, "date": "2026-02-17", "type": "debit", "category": "Groceries", "merchant": "BigBasket", "amount": 730.0}, {"id": 13, "date": "2026-02-18", "type": "debit", "category": "Bills & Utilities", "merchant": "Jio Recharge", "amount": 370.0}, {"id": 14, "date": "2026-02-18", "type": "debit", "category": "Bills & Utilities", "merchant": "Jio Recharge", "amount": 540.0}, {"id": 15, "date": "2026-02-18", "type": "debit", "category": "Entertainment", "merchant": "PVR Cinemas", "amount": 430.0}, {"id": 16, "date": "2026-02-19", "type": "debit", "category": "Food & Dining", "merchant": "Cafe Coffee Day", "amount": 230.0}, {"id": 17, "date": "2026-02-19", "type": "debit", "category": "Groceries", "merchant": "Local Kirana Store", "amount": 360.0}, {"id": 18, "date": "2026-02-19", "type": "debit", "category": "Groceries", "merchant": "Local Kirana Store", "amount": 420.0}, {"id": 19, "date": "2026-02-21", "type": "debit", "category": "Groceries", "merchant": "BigBasket", "amount": 900.0}, {"id": 20, "date": "2026-02-24", "type": "debit", "category": "Education", "merchant": "Byju's Subscription", "amount": 680.0}, {"id": 21, "date": "2026-02-27", "type": "debit", "category": "Shopping", "merchant": "Flipkart", "amount": 970.0}, {"id": 22, "date": "2026-03-03", "type": "credit", "category": "Income", "merchant": "Freelance Web Project", "amount": 5380.0}, {"id": 23, "date": "2026-03-03", "type": "debit", "category": "Health", "merchant": "Local Pharmacy", "amount": 150.0}, {"id": 24, "date": "2026-03-05", "type": "credit", "category": "Income", "merchant": "Part-time Tutoring", "amount": 4090.0}, {"id": 25, "date": "2026-03-05", "type": "debit", "category": "Health", "merchant": "Practo Consultation", "amount": 320.0}, {"id": 26, "date": "2026-03-06", "type": "debit", "category": "Education", "merchant": "Book Store", "amount": 310.0}, {"id": 27, "date": "2026-03-08", "type": "debit", "category": "Savings Transfer", "merchant": "Recurring Deposit (RD)", "amount": 2340.0}, {"id": 28, "date": "2026-03-09", "type": "debit", "category": "Health", "merchant": "Gym Membership", "amount": 970.0}, {"id": 29, "date": "2026-03-09", "type": "debit", "category": "Health", "merchant": "Gym Membership", "amount": 910.0}, {"id": 30, "date": "2026-03-13", "type": "debit", "category": "Health", "merchant": "Local Pharmacy", "amount": 220.0}, {"id": 31, "date": "2026-03-13", "type": "debit", "category": "Education", "merchant": "Book Store", "amount": 220.0}, {"id": 32, "date": "2026-03-14", "type": "debit", "category": "Food & Dining", "merchant": "Zomato", "amount": 300.0}, {"id": 33, "date": "2026-03-16", "type": "debit", "category": "Transport", "merchant": "Ola", "amount": 90.0}, {"id": 34, "date": "2026-03-19", "type": "debit", "category": "Shopping", "merchant": "Flipkart", "amount": 1290.0}, {"id": 35, "date": "2026-03-22", "type": "debit", "category": "Education", "merchant": "Book Store", "amount": 230.0}, {"id": 36, "date": "2026-03-22", "type": "debit", "category": "Transport", "merchant": "Uber", "amount": 130.0}, {"id": 37, "date": "2026-03-23", "type": "debit", "category": "Education", "merchant": "Byju's Subscription", "amount": 650.0}, {"id": 38, "date": "2026-03-23", "type": "debit", "category": "Entertainment", "merchant": "PVR Cinemas", "amount": 460.0}, {"id": 39, "date": "2026-03-24", "type": "debit", "category": "Shopping", "merchant": "Amazon", "amount": 600.0}, {"id": 40, "date": "2026-03-29", "type": "debit", "category": "Entertainment", "merchant": "Spotify Premium", "amount": 119}, {"id": 41, "date": "2026-03-29", "type": "debit", "category": "Food & Dining", "merchant": "Local Tea Stall", "amount": 70.0}, {"id": 42, "date": "2026-03-31", "type": "debit", "category": "Entertainment", "merchant": "PVR Cinemas", "amount": 370.0}, {"id": 43, "date": "2026-04-02", "type": "credit", "category": "Income", "merchant": "Scholarship Credit", "amount": 4000.0}, {"id": 44, "date": "2026-04-03", "type": "credit", "category": "Income", "merchant": "Part-time Tutoring", "amount": 3700.0}, {"id": 45, "date": "2026-04-03", "type": "debit", "category": "Entertainment", "merchant": "Netflix", "amount": 270.0}, {"id": 46, "date": "2026-04-04", "type": "credit", "category": "Income", "merchant": "Family Support", "amount": 6490.0}, {"id": 47, "date": "2026-04-04", "type": "debit", "category": "Education", "merchant": "Udemy Course", "amount": 920.0}, {"id": 48, "date": "2026-04-08", "type": "debit", "category": "Entertainment", "merchant": "Spotify Premium", "amount": 119}, {"id": 49, "date": "2026-04-09", "type": "debit", "category": "Savings Transfer", "merchant": "Recurring Deposit (RD)", "amount": 2040.0}, {"id": 50, "date": "2026-04-10", "type": "debit", "category": "Food & Dining", "merchant": "Cafe Coffee Day", "amount": 350.0}, {"id": 51, "date": "2026-04-12", "type": "debit", "category": "Entertainment", "merchant": "Spotify Premium", "amount": 119}, {"id": 52, "date": "2026-04-12", "type": "debit", "category": "Entertainment", "merchant": "PVR Cinemas", "amount": 440.0}, {"id": 53, "date": "2026-04-16", "type": "debit", "category": "Education", "merchant": "Byju's Subscription", "amount": 620.0}, {"id": 54, "date": "2026-04-17", "type": "debit", "category": "Food & Dining", "merchant": "Zomato", "amount": 240.0}, {"id": 55, "date": "2026-04-17", "type": "debit", "category": "Bills & Utilities", "merchant": "Airtel Postpaid", "amount": 550.0}, {"id": 56, "date": "2026-04-21", "type": "debit", "category": "Health", "merchant": "Practo Consultation", "amount": 380.0}, {"id": 57, "date": "2026-04-23", "type": "debit", "category": "Shopping", "merchant": "Amazon", "amount": 1030.0}, {"id": 58, "date": "2026-04-24", "type": "debit", "category": "Transport", "merchant": "Ola", "amount": 140.0}, {"id": 59, "date": "2026-04-26", "type": "debit", "category": "Food & Dining", "merchant": "Swiggy", "amount": 250.0}, {"id": 60, "date": "2026-04-26", "type": "debit", "category": "Entertainment", "merchant": "Netflix", "amount": 480.0}, {"id": 61, "date": "2026-04-27", "type": "debit", "category": "Shopping", "merchant": "Myntra", "amount": 920.0}, {"id": 62, "date": "2026-04-27", "type": "debit", "category": "Bills & Utilities", "merchant": "Airtel Postpaid", "amount": 520.0}, {"id": 63, "date": "2026-04-28", "type": "debit", "category": "Food & Dining", "merchant": "Swiggy", "amount": 220.0}, {"id": 64, "date": "2026-04-28", "type": "debit", "category": "Groceries", "merchant": "Local Kirana Store", "amount": 200.0}, {"id": 65, "date": "2026-05-01", "type": "debit", "category": "Transport", "merchant": "Ola", "amount": 220.0}, {"id": 66, "date": "2026-05-02", "type": "credit", "category": "Income", "merchant": "Family Support", "amount": 7010.0}, {"id": 67, "date": "2026-05-03", "type": "debit", "category": "Entertainment", "merchant": "Spotify Premium", "amount": 119}, {"id": 68, "date": "2026-05-04", "type": "credit", "category": "Income", "merchant": "Freelance Web Project", "amount": 5500.0}, {"id": 69, "date": "2026-05-05", "type": "debit", "category": "Transport", "merchant": "Ola", "amount": 180.0}, {"id": 70, "date": "2026-05-05", "type": "debit", "category": "Education", "merchant": "Book Store", "amount": 440.0}, {"id": 71, "date": "2026-05-05", "type": "debit", "category": "Health", "merchant": "Gym Membership", "amount": 860.0}, {"id": 72, "date": "2026-05-06", "type": "debit", "category": "Groceries", "merchant": "Local Kirana Store", "amount": 170.0}, {"id": 73, "date": "2026-05-06", "type": "debit", "category": "Food & Dining", "merchant": "Zomato", "amount": 170.0}, {"id": 74, "date": "2026-05-07", "type": "debit", "category": "Food & Dining", "merchant": "Domino's Pizza", "amount": 420.0}, {"id": 75, "date": "2026-05-09", "type": "debit", "category": "Bills & Utilities", "merchant": "Electricity Bill (MSEB)", "amount": 990.0}, {"id": 76, "date": "2026-05-12", "type": "debit", "category": "Savings Transfer", "merchant": "Recurring Deposit (RD)", "amount": 2340.0}, {"id": 77, "date": "2026-05-13", "type": "debit", "category": "Health", "merchant": "Local Pharmacy", "amount": 320.0}, {"id": 78, "date": "2026-05-19", "type": "debit", "category": "Education", "merchant": "Book Store", "amount": 530.0}, {"id": 79, "date": "2026-05-24", "type": "debit", "category": "Groceries", "merchant": "Local Kirana Store", "amount": 470.0}, {"id": 80, "date": "2026-05-25", "type": "debit", "category": "Food & Dining", "merchant": "Local Tea Stall", "amount": 30.0}, {"id": 81, "date": "2026-05-26", "type": "debit", "category": "Groceries", "merchant": "D-Mart", "amount": 800.0}, {"id": 82, "date": "2026-05-26", "type": "debit", "category": "Entertainment", "merchant": "PVR Cinemas", "amount": 490.0}, {"id": 83, "date": "2026-05-27", "type": "debit", "category": "Health", "merchant": "Practo Consultation", "amount": 560.0}, {"id": 84, "date": "2026-05-29", "type": "debit", "category": "Bills & Utilities", "merchant": "Wifi Broadband", "amount": 630.0}, {"id": 85, "date": "2026-05-30", "type": "debit", "category": "Education", "merchant": "Book Store", "amount": 340.0}, {"id": 86, "date": "2026-05-30", "type": "debit", "category": "Transport", "merchant": "Ola", "amount": 210.0}, {"id": 87, "date": "2026-06-03", "type": "debit", "category": "Education", "merchant": "Byju's Subscription", "amount": 770.0}, {"id": 88, "date": "2026-06-05", "type": "credit", "category": "Income", "merchant": "Part-time Tutoring", "amount": 2620.0}, {"id": 89, "date": "2026-06-05", "type": "credit", "category": "Income", "merchant": "Family Support", "amount": 7590.0}, {"id": 90, "date": "2026-06-05", "type": "credit", "category": "Income", "merchant": "Scholarship Credit", "amount": 7140.0}, {"id": 91, "date": "2026-06-06", "type": "debit", "category": "Health", "merchant": "Local Pharmacy", "amount": 400.0}, {"id": 92, "date": "2026-06-07", "type": "debit", "category": "Health", "merchant": "Practo Consultation", "amount": 500.0}, {"id": 93, "date": "2026-06-08", "type": "debit", "category": "Savings Transfer", "merchant": "Recurring Deposit (RD)", "amount": 2380.0}, {"id": 94, "date": "2026-06-08", "type": "debit", "category": "Education", "merchant": "Book Store", "amount": 480.0}, {"id": 95, "date": "2026-06-09", "type": "debit", "category": "Bills & Utilities", "merchant": "Airtel Postpaid", "amount": 410.0}, {"id": 96, "date": "2026-06-09", "type": "debit", "category": "Entertainment", "merchant": "PVR Cinemas", "amount": 470.0}, {"id": 97, "date": "2026-06-11", "type": "debit", "category": "Groceries", "merchant": "D-Mart", "amount": 730.0}, {"id": 98, "date": "2026-06-14", "type": "debit", "category": "Education", "merchant": "Udemy Course", "amount": 520.0}, {"id": 99, "date": "2026-06-14", "type": "debit", "category": "Health", "merchant": "Local Pharmacy", "amount": 160.0}, {"id": 100, "date": "2026-06-15", "type": "debit", "category": "Groceries", "merchant": "Local Kirana Store", "amount": 320.0}, {"id": 101, "date": "2026-06-15", "type": "debit", "category": "Bills & Utilities", "merchant": "Electricity Bill (MSEB)", "amount": 960.0}, {"id": 102, "date": "2026-06-23", "type": "debit", "category": "Groceries", "merchant": "BigBasket", "amount": 910.0}, {"id": 103, "date": "2026-06-23", "type": "debit", "category": "Bills & Utilities", "merchant": "Airtel Postpaid", "amount": 530.0}, {"id": 104, "date": "2026-06-24", "type": "debit", "category": "Education", "merchant": "Udemy Course", "amount": 970.0}, {"id": 105, "date": "2026-06-24", "type": "debit", "category": "Entertainment", "merchant": "PVR Cinemas", "amount": 340.0}, {"id": 106, "date": "2026-06-29", "type": "debit", "category": "Shopping", "merchant": "Flipkart", "amount": 1240.0}, {"id": 107, "date": "2026-07-02", "type": "debit", "category": "Shopping", "merchant": "Myntra", "amount": 1120.0}, {"id": 108, "date": "2026-07-04", "type": "credit", "category": "Income", "merchant": "Freelance Web Project", "amount": 5810.0}, {"id": 109, "date": "2026-07-04", "type": "credit", "category": "Income", "merchant": "Part-time Tutoring", "amount": 3160.0}, {"id": 110, "date": "2026-07-05", "type": "debit", "category": "Shopping", "merchant": "Flipkart", "amount": 300.0}, {"id": 111, "date": "2026-07-06", "type": "debit", "category": "Bills & Utilities", "merchant": "Jio Recharge", "amount": 300.0}, {"id": 112, "date": "2026-07-11", "type": "debit", "category": "Education", "merchant": "Book Store", "amount": 240.0}, {"id": 113, "date": "2026-07-12", "type": "debit", "category": "Savings Transfer", "merchant": "Recurring Deposit (RD)", "amount": 1800.0}, {"id": 114, "date": "2026-07-14", "type": "debit", "category": "Food & Dining", "merchant": "Zomato", "amount": 420.0}, {"id": 115, "date": "2026-07-18", "type": "debit", "category": "Health", "merchant": "Practo Consultation", "amount": 580.0}, {"id": 116, "date": "2026-07-18", "type": "debit", "category": "Food & Dining", "merchant": "Domino's Pizza", "amount": 470.0}, {"id": 117, "date": "2026-07-20", "type": "debit", "category": "Shopping", "merchant": "Amazon", "amount": 1330.0}, {"id": 118, "date": "2026-07-21", "type": "debit", "category": "Shopping", "merchant": "Amazon", "amount": 410.0}, {"id": 119, "date": "2026-07-22", "type": "debit", "category": "Education", "merchant": "Book Store", "amount": 270.0}, {"id": 120, "date": "2026-07-25", "type": "debit", "category": "Transport", "merchant": "Petrol Pump", "amount": 260.0}, {"id": 121, "date": "2026-07-25", "type": "debit", "category": "Shopping", "merchant": "Flipkart", "amount": 470.0}, {"id": 122, "date": "2026-07-27", "type": "debit", "category": "Health", "merchant": "Gym Membership", "amount": 980.0}, {"id": 123, "date": "2026-07-28", "type": "debit", "category": "Groceries", "merchant": "D-Mart", "amount": 390.0}, {"id": 124, "date": "2026-07-29", "type": "debit", "category": "Groceries", "merchant": "BigBasket", "amount": 480.0}, {"id": 125, "date": "2026-07-30", "type": "debit", "category": "Transport", "merchant": "Uber", "amount": 150.0}];
+
+const catColors = {
+  "Food & Dining": "#B33A3A",
+  "Groceries": "#6E8F5A",
+  "Transport": "#3E6C8E",
+  "Bills & Utilities": "#A6772E",
+  "Shopping": "#7C4E8A",
+  "Entertainment": "#C77B3E",
+  "Health": "#2F6B6F",
+  "Education": "#4A5A9E",
+  "Savings Transfer": "#1F5C3D"
+};
+
+function monthKey(dstr){ return dstr.slice(0,7); }
+function monthLabel(key){
+  const [y,m] = key.split("-");
+  const names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return names[parseInt(m,10)-1] + " " + y;
+}
+function fmtINR(n){
+  return "₹" + Math.round(n).toLocaleString("en-IN");
+}
+
+// ---- Aggregate ----
+const months = [...new Set(transactions.map(t=>monthKey(t.date)))].sort();
+const monthlyIncome = {}, monthlyExpense = {};
+months.forEach(m=>{monthlyIncome[m]=0; monthlyExpense[m]=0;});
+
+let totalIncome=0, totalExpense=0;
+const categoryTotals = {};
+const merchantTotals = {};
+
+transactions.forEach(t=>{
+  const mk = monthKey(t.date);
+  if(t.type === "credit"){
+    monthlyIncome[mk] += t.amount;
+    totalIncome += t.amount;
+  } else {
+    monthlyExpense[mk] += t.amount;
+    totalExpense += t.amount;
+    categoryTotals[t.category] = (categoryTotals[t.category]||0) + t.amount;
+    merchantTotals[t.merchant] = (merchantTotals[t.merchant]||0) + t.amount;
+  }
+});
+
+const netSavings = totalIncome - totalExpense;
+const savingsRate = totalIncome > 0 ? (netSavings/totalIncome*100) : 0;
+
+// prediction: avg expense of last 3 months
+const last3 = months.slice(-3);
+const predicted = last3.reduce((s,m)=>s+monthlyExpense[m],0) / (last3.length||1);
+
+document.getElementById("kpiIncome").textContent = fmtINR(totalIncome);
+document.getElementById("kpiExpense").textContent = fmtINR(totalExpense);
+document.getElementById("kpiExpenseNote").textContent = months.length + " months tracked";
+document.getElementById("kpiSavings").textContent = fmtINR(netSavings);
+document.getElementById("heroBalance").textContent = fmtINR(netSavings);
+document.getElementById("kpiSavingsRate").textContent = savingsRate.toFixed(1) + "% savings rate";
+document.getElementById("kpiPredict").textContent = fmtINR(predicted);
+
+const stampEl = document.getElementById("healthStamp");
+if(savingsRate < 15){
+  stampEl.classList.add("warn");
+  stampEl.innerHTML = "SAVINGS<br>WATCH";
+} else {
+  stampEl.innerHTML = "SAVINGS<br>HEALTHY";
+}
+
+// ---- Trend chart ----
+new Chart(document.getElementById('trendChart'), {
+  type: 'line',
+  data: {
+    labels: months.map(monthLabel),
+    datasets: [
+      {
+        label: 'Income',
+        data: months.map(m=>monthlyIncome[m]),
+        borderColor: '#1F5C3D', backgroundColor: 'rgba(31,92,61,0.12)',
+        borderWidth: 2, tension: 0.25, fill: true, pointRadius: 3
+      },
+      {
+        label: 'Expenses',
+        data: months.map(m=>monthlyExpense[m]),
+        borderColor: '#A13D2E', backgroundColor: 'rgba(161,61,46,0.10)',
+        borderWidth: 2, tension: 0.25, fill: true, pointRadius: 3
+      }
+    ]
+  },
+  options: {
+    responsive:true,
+    plugins:{ legend:{ position:'bottom', labels:{ font:{family:"'IBM Plex Sans'"}, boxWidth:12 } } },
+    scales:{
+      y:{ ticks:{ callback:v=>'₹'+v.toLocaleString('en-IN'), font:{family:"'IBM Plex Mono'"} }, grid:{color:'rgba(30,42,56,0.08)'} },
+      x:{ ticks:{ font:{family:"'IBM Plex Mono'"} }, grid:{display:false} }
+    }
+  }
+});
+
+// ---- Donut chart ----
+const catEntries = Object.entries(categoryTotals).sort((a,b)=>b[1]-a[1]);
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: catEntries.map(e=>e[0]),
+    datasets: [{
+      data: catEntries.map(e=>e[1]),
+      backgroundColor: catEntries.map(e=>catColors[e[0]]||'#888'),
+      borderColor: '#EFF2E9', borderWidth:2
+    }]
+  },
+  options: {
+    responsive:true,
+    cutout:'62%',
+    plugins:{ legend:{ display:false } }
+  }
+});
+
+const legendList = document.getElementById("donutLegend");
+const catTotalSum = catEntries.reduce((s,e)=>s+e[1],0);
+catEntries.forEach(([cat, amt])=>{
+  const li = document.createElement("li");
+  const pct = (amt/catTotalSum*100).toFixed(1);
+  li.innerHTML = `<span class="legend-name"><span class="swatch" style="background:${catColors[cat]||'#888'}"></span>${cat}</span><span>${fmtINR(amt)} · ${pct}%</span>`;
+  legendList.appendChild(li);
+});
+
+// ---- Top merchants chart ----
+const merchEntries = Object.entries(merchantTotals).sort((a,b)=>b[1]-a[1]).slice(0,8);
+new Chart(document.getElementById('merchantChart'), {
+  type: 'bar',
+  data: {
+    labels: merchEntries.map(e=>e[0]),
+    datasets: [{
+      data: merchEntries.map(e=>e[1]),
+      backgroundColor: '#3E6C8E',
+      borderRadius: 3
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive:true,
+    plugins:{ legend:{ display:false } },
+    scales:{
+      x:{ ticks:{ callback:v=>'₹'+v.toLocaleString('en-IN'), font:{family:"'IBM Plex Mono'"} }, grid:{color:'rgba(30,42,56,0.08)'} },
+      y:{ ticks:{ font:{family:"'IBM Plex Sans'", size:11} }, grid:{display:false} }
+    }
+  }
+});
+
+// ---- Ledger table ----
+const monthFilterSel = document.getElementById("monthFilter");
+months.forEach(m=>{
+  const opt = document.createElement("option");
+  opt.value = m; opt.textContent = monthLabel(m);
+  monthFilterSel.appendChild(opt);
+});
+
+const tbody = document.getElementById("ledgerBody");
+const searchBox = document.getElementById("searchBox");
+const typeFilterSel = document.getElementById("typeFilter");
+
+function renderTable(){
+  const q = searchBox.value.trim().toLowerCase();
+  const mf = monthFilterSel.value;
+  const tf = typeFilterSel.value;
+
+  const rows = transactions
+    .filter(t => mf === "all" || monthKey(t.date) === mf)
+    .filter(t => tf === "all" || t.type === tf)
+    .filter(t => !q || t.merchant.toLowerCase().includes(q) || t.category.toLowerCase().includes(q))
+    .sort((a,b)=> a.date < b.date ? 1 : -1);
+
+  tbody.innerHTML = "";
+  if(rows.length === 0){
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px; color:var(--ink-soft);">No entries match this filter.</td></tr>';
+    return;
+  }
+  rows.forEach(t=>{
+    const tr = document.createElement("tr");
+    const sign = t.type === "credit" ? "+" : "−";
+    const cls = t.type === "credit" ? "amt-credit" : "amt-debit";
+    tr.innerHTML = `
+      <td>${t.date}</td>
+      <td>${t.merchant}</td>
+      <td><span class="cat-tag">${t.category}</span></td>
+      <td style="text-align:right;" class="${cls}">${sign} ${fmtINR(t.amount)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+searchBox.addEventListener("input", renderTable);
+monthFilterSel.addEventListener("change", renderTable);
+typeFilterSel.addEventListener("change", renderTable);
+renderTable();
+</script>
+</body>
+</html>
